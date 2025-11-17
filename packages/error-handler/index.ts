@@ -35,7 +35,7 @@ export class AuthError extends AppError {
 }
 
 //? Forbidden Error (For Insufficient Access)
-export class forbiddenError extends AppError {
+export class ForbiddenError extends AppError {
   constructor(message = 'Forbidden Access') {
     super(403, true, message);
   }

@@ -1,12 +1,12 @@
 import { NextFunction, Request, Response } from 'express';
-import { validateRegistrationData, checkOtRestrictions } from '../utils/auth.utils';
+import { validateRegistrationData, checkOtpRestrictions, trackOTPRequests, sendOtp } from '../utils/auth.utils';
 import prisma from '../../../../packages/libs/prisma';
-import { AuthError, ValidationError } from '../../../../packages/error-handler/index';
+import { ValidationError } from '../../../../packages/error-handler/index';
 
 export const handleUserRegistration = async (req: Request, res: Response, next: NextFunction) => {
   try {
     validateRegistrationData(req.body, 'user');
-    const { email } = req.body;
+    const { email, name } = req.body;
 
     const isUserAlreadyExists = await prisma.users.findUnique({ where: email });
 
@@ -15,11 +15,21 @@ export const handleUserRegistration = async (req: Request, res: Response, next: 
     }
 
     // check otp
-    await checkOtRestrictions(email, next);
+    await checkOtpRestrictions(email, next);
 
-    res.status(201).json();
+    // track OTP
+    await trackOTPRequests(email, next);
+
+    // sending OTP
+    await sendOtp(name, email, 'user-activation-mail');
+
+    return res.status(201).json(
+      {
+        success: true,
+        message: 'OTP sent to your Email. Please verify your Account.'
+      }
+    );
   } catch (error) {
-    console.log('Error in User Registration', error);
-    return next(new AuthError(500, 'Error in User Registration'));
+    return next(error);
   }
 };

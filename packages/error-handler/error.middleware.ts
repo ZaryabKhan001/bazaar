@@ -1,7 +1,13 @@
-import { Request, Response } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import { AppError } from './index.js';
 
-export const errorMiddleware = (err: Error, req: Request, res: Response) => {
+export const errorMiddleware = (
+  err: Error,
+  req: Request,
+  res: Response,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _next: NextFunction
+) => {
   if (err instanceof AppError) {
     console.log(`Error in ${req.method} request on ${req.url}.`);
     console.log(`Error Details: ${err}`);
@@ -15,6 +21,7 @@ export const errorMiddleware = (err: Error, req: Request, res: Response) => {
   console.log('Unhandled Error:', err);
   return res.status(500).json({
     success: false,
-    message: 'Something went Wrong',
+    message: 'Something went wrong',
   });
 };
+

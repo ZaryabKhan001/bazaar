@@ -15,6 +15,7 @@
     "noImplicitReturns": true,
     "noUnusedLocals": true,
     "paths": {
+      "@packages/*": ["packages/*"],
       "@prisma/client": ["generated/prisma"]
     },
     "skipLibCheck": true,

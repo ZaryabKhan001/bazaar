@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { NextFunction } from 'express';
 import { ValidationError } from '../../../../packages/error-handler/index';
 import crypto from 'crypto';
@@ -33,7 +34,6 @@ export const checkOtpRestrictions = async (email: string, next: NextFunction) =>
   if (await redis.get(`${getRedisKey('otp_cooldown')}${email}`)) {
     return next(new ValidationError('Please wait 1 minute before requesting a new OTP!'));
   }
-
 };
 
 export const trackOTPRequests = async (email: string, next: NextFunction) => {
@@ -53,6 +53,29 @@ export const sendOtp = async (name: string, email: string, template: string) => 
 
   await sendEmail(email, 'Verify Your Email', template, { name, otp });
 
-  await redis.set(`otp:${email}`, otp, 'EX', 300);
-  await redis.set(`otp_cooldown:${email}`, 'true', 'EX', 60);
+  await redis.set(`${getRedisKey('otp')}${email}`, otp, 'EX', 300);
+  await redis.set(`${getRedisKey('otp_cooldown')}${email}`, 'true', 'EX', 60);
+};
+
+export const verifyOTP = async (email: string, otp: string, next: NextFunction) => {
+  const storedOTP = await redis.get(`${getRedisKey('otp')}${email}`);
+  if (!storedOTP) {
+    throw new ValidationError('Invalid or Expired OTP!');
+  }
+
+  const failedAttemptsKey = `${getRedisKey('otp_attempts')}${email}`;
+  const failedAttempts = Number((await redis.get(failedAttemptsKey)) || 0);
+
+  if (storedOTP !== otp) {
+    if (failedAttempts >= 2) {
+      await redis.set(`${getRedisKey('otp_lock')}${email}`, 'locked', 'EX', 1800);
+      await redis.del(`${getRedisKey('otp')}${email}`, failedAttemptsKey);
+      throw new ValidationError('Account Locked, due to multiple failed attempts. Try again after 30 minutes.');
+    } else {
+      await redis.set(failedAttemptsKey, failedAttempts + 1, 'EX', 300);
+      throw new ValidationError(`Incorrect OTP. ${2 - failedAttempts} attempts left.`);
+    }
+  }
+
+  await redis.del(`${getRedisKey('otp')}${email}`, failedAttemptsKey);
 };

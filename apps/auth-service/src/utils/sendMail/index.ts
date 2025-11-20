@@ -29,6 +29,7 @@ transporter.verify((error, success) => {
 export const renderEmailTemplate = async (templateName: string, data: Record<string, any>): Promise<string> => {
   const templatePath = path.join(
     process.cwd(),
+    'apps',
     'auth-service',
     'src',
     'utils',
@@ -38,7 +39,6 @@ export const renderEmailTemplate = async (templateName: string, data: Record<str
 
   if(!fs.existsSync(templatePath)) {
     throw new Error(`Template not found with Name: ${templateName}`);
-    
   }
 
   return ejs.renderFile(templatePath, data);

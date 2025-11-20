@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 export class AppError extends Error {
   public readonly statusCode: number;
   public readonly isOperational: boolean;
@@ -35,7 +34,7 @@ export class AuthError extends AppError {
 }
 
 //? Forbidden Error (For Insufficient Access)
-export class forbiddenError extends AppError {
+export class ForbiddenError extends AppError {
   constructor(message = 'Forbidden Access') {
     super(403, true, message);
   }
@@ -54,3 +53,5 @@ export class RateLimitError extends AppError {
     super(429, true, message, details);
   }
 }
+
+export { errorMiddleware } from './error.middleware';

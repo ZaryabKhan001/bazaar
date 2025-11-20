@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    "baseUrl": ".",
     "composite": true,
     "declarationMap": true,
     "emitDeclarationOnly": true,
@@ -13,6 +14,10 @@
     "noImplicitOverride": true,
     "noImplicitReturns": true,
     "noUnusedLocals": true,
+    "paths": {
+      "@packages/*": ["packages/*"],
+      "@prisma/client": ["generated/prisma"]
+    },
     "skipLibCheck": true,
     "strict": true,
     "target": "es2022",

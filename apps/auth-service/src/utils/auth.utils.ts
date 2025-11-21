@@ -5,6 +5,7 @@ import crypto from 'crypto';
 import { redis } from '../../../../packages/libs/redis';
 import { sendEmail } from './sendMail/index';
 import { redis_keys } from './constants';
+import jwt from 'jsonwebtoken';
 
 const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
@@ -14,8 +15,14 @@ const getRedisKey = (key: keyof typeof redis_keys): string => redis_keys[key];
 export const validateRegistrationData = (data: any, userType: 'seller' | 'user') => {
   const { name, email, password, phone_number, country } = data;
 
-  if (!name || !email || !password || (userType === 'seller' && (!phone_number || !country))) {
-    throw new ValidationError('Missing required fields');
+  const isSeller = userType === 'seller';
+
+  if (!name || !email || !password) {
+    throw new ValidationError('Name, email, and password are required.');
+  }
+
+  if (isSeller && (!phone_number || !country)) {
+    throw new ValidationError('Phone number and country are required for sellers.');
   }
 
   if (!emailRegex.test(email)) {
@@ -25,14 +32,14 @@ export const validateRegistrationData = (data: any, userType: 'seller' | 'user')
 
 export const checkOtpRestrictions = async (email: string, next: NextFunction) => {
   if (await redis.get(`${getRedisKey('otp_lock')}${email}`)) {
-    return next(new ValidationError('Account Locked, due to multiple failed attempts. Try again after 30 minutes.'));
+    throw new ValidationError('Account Locked, due to multiple failed attempts. Try again after 30 minutes.');
   }
   if (await redis.get(`${getRedisKey('otp_spam_lock')}${email}`)) {
-    return next(new ValidationError('Too many OTP Requests! Please wait 1 hour before requesting again.'));
+    throw new ValidationError('Too many OTP Requests! Please wait 1 hour before requesting again.');
   }
 
   if (await redis.get(`${getRedisKey('otp_cooldown')}${email}`)) {
-    return next(new ValidationError('Please wait 1 minute before requesting a new OTP!'));
+    throw new ValidationError('Please wait 1 minute before requesting a new OTP!');
   }
 };
 
@@ -42,7 +49,7 @@ export const trackOTPRequests = async (email: string, next: NextFunction) => {
 
   if (otpRequests >= 2) {
     await redis.set(`${getRedisKey('otp_spam_lock')}${email}`, 'locked', 'EX', 3600); // lock for 1 hour
-    return next(new ValidationError('Too many OTP Requests! Please wait 1 hour before requesting again.'));
+    throw new ValidationError('Too many OTP Requests! Please wait 1 hour before requesting again.');
   }
 
   await redis.set(otpRequestKey, otpRequests + 1, 'EX', 3600); // for  1 hour
@@ -78,4 +85,18 @@ export const verifyOTP = async (email: string, otp: string, next: NextFunction) 
   }
 
   await redis.del(`${getRedisKey('otp')}${email}`, failedAttemptsKey);
+};
+
+export const validateLoginData = async (data: any) => {
+  const { email, password } = data;
+  if (!email || !password) {
+    throw new ValidationError('Email and Password are required!');
+  }
+};
+
+export const generateTokens = async (id: string, email: string, role = 'user') => {
+  const accessToken = jwt.sign({ id, email, role }, process.env.ACCESS_TOKEN_SECRET as string, { expiresIn: '15m' });
+  const refreshToken = jwt.sign({ id, email, role }, process.env.REFRESH_TOKEN_SECRET as string, { expiresIn: '7d' });
+
+  return { accessToken, refreshToken };
 };

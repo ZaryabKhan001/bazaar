@@ -1,11 +1,12 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { NextFunction } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import { ValidationError } from '../../../../packages/error-handler/index';
 import crypto from 'crypto';
 import { redis } from '../../../../packages/libs/redis';
 import { sendEmail } from './sendMail/index';
 import { redis_keys } from './constants';
 import jwt from 'jsonwebtoken';
+import prisma from '../../../../packages/libs/prisma';
 
 const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
@@ -99,4 +100,54 @@ export const generateTokens = async (id: string, email: string, role = 'user') =
   const refreshToken = jwt.sign({ id, email, role }, process.env.REFRESH_TOKEN_SECRET as string, { expiresIn: '7d' });
 
   return { accessToken, refreshToken };
+};
+
+export const forgotPassword = async (req: Request, res: Response, next: NextFunction, userType: 'user' | 'seller') => {
+  try {
+    const { email } = req.body;
+    if (!email) throw new ValidationError('Email is required');
+
+    // check user/seller
+    const user = userType === 'user' && (await prisma.users.findUnique({ where: { email } }));
+
+    if (!user) throw new ValidationError(`User does not Exists for UserType: ${userType}`);
+
+    // check otp restrictions
+    await checkOtpRestrictions(email, next);
+
+    // track otp requests
+    await trackOTPRequests(email, next);
+
+    // generate otp
+    await sendOtp(user?.name, email, 'forgot-password-user-mail');
+
+    res.status(200).json({
+      success: true,
+      message: 'OTP sent to your Email. Please verify your Email.',
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+export const verifyForgetPasswordOTP = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const { email, otp } = req.body;
+    if (!otp) {
+      return next(new ValidationError('OTP is required.'));
+    }
+
+    await verifyOTP(email, otp, next);
+
+    return res.status(200).json({
+      success: true,
+      message: 'OTP Verified. You can now reset your password.',
+    });
+  } catch (error) {
+    return next(error);
+  }
 };

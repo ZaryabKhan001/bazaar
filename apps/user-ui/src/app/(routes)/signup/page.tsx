@@ -1,9 +1,10 @@
 'use client';
 import GoogleButton from 'apps/user-ui/src/shared/components/GoogleButton';
+import Otp from 'apps/user-ui/src/shared/components/Otp';
 import { Eye, EyeOff } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 
 type formData = {
@@ -13,8 +14,14 @@ type formData = {
 };
 
 const Signup = () => {
-  const [serverError, setServerError] = useState(null);
-  const [passwordVisible, setPasswordVisible] = useState(false);
+  const [serverError, setServerError] = useState<string | null>(null);
+  const [passwordVisible, setPasswordVisible] = useState<boolean>(false);
+  const [canResend, setCanResend] = useState<boolean>(false);
+  const [showOtp, setShowOtp] = useState<boolean>(false);
+  const [userData, setUserData] = useState<formData | null>(null);
+  const [timer, setTimer] = useState<number>(60);
+  const [otp, setOtp] = useState(['', '', '', '']);
+  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   const router = useRouter();
 
@@ -46,61 +53,73 @@ const Signup = () => {
             <div className='flex-1 border-t border-gray-300'></div>
           </div>
           {/* form  */}
-          <form onSubmit={handleSubmit(onSubmit)}>
-            <label className='block text-gray-700 mb-1 font-semibold'>Name</label>
-            <input
-              type='text'
-              placeholder='John Doe'
-              className='w-full p-2 border border-gray-300 outline-0 rounded-md mb-1'
-              {...register('name', {
-                required: 'Name is Required',
-              })}
-            />
-            {errors.email && <p className='text-sm text-red-500'>{String(errors.email.message)}</p>}
-            <label className='block text-gray-700 mb-1 font-semibold'>Email</label>
-            <input
-              type='email'
-              placeholder='example@gmail.com'
-              className='w-full p-2 border border-gray-300 outline-0 rounded-md mb-1'
-              {...register('email', {
-                required: 'Email is Required',
-                pattern: {
-                  value: /^[a-zA-Z0-9._%+-]+@[a-zA-z0-9.-]+\.[a-zA-Z]{2,4}$/,
-                  message: 'Invalid email address',
-                },
-              })}
-            />
-            {errors.email && <p className='text-sm text-red-500'>{String(errors.email.message)}</p>}
-            <label className='block text-gray-700 mb-1 font-semibold'>Password</label>
-
-            <div className='relative'>
+          {!showOtp ? (
+            <form onSubmit={handleSubmit(onSubmit)}>
+              <label className='block text-gray-700 mb-1 font-semibold'>Name</label>
               <input
-                type={passwordVisible ? 'text' : 'password'}
-                placeholder='Min. 6 characters'
+                type='text'
+                placeholder='John Doe'
                 className='w-full p-2 border border-gray-300 outline-0 rounded-md mb-1'
-                {...register('password', {
-                  required: 'Password is Required',
-                  minLength: {
-                    value: 6,
-                    message: 'Password must be at least 6 characters.',
+                {...register('name', {
+                  required: 'Name is Required',
+                })}
+              />
+              {errors.email && <p className='text-sm text-red-500'>{String(errors.email.message)}</p>}
+              <label className='block text-gray-700 mb-1 font-semibold'>Email</label>
+              <input
+                type='email'
+                placeholder='example@gmail.com'
+                className='w-full p-2 border border-gray-300 outline-0 rounded-md mb-1'
+                {...register('email', {
+                  required: 'Email is Required',
+                  pattern: {
+                    value: /^[a-zA-Z0-9._%+-]+@[a-zA-z0-9.-]+\.[a-zA-Z]{2,4}$/,
+                    message: 'Invalid email address',
                   },
                 })}
               />
-              <button
-                type='button'
-                onClick={() => setPasswordVisible(!passwordVisible)}
-                className='absolute inset-y-0 right-3 flex items-center text-gray-400'
-              >
-                {passwordVisible ? <Eye /> : <EyeOff />}
-              </button>
-            </div>
-            {errors.password && <p className='text-sm text-red-500'>{String(errors.password.message)}</p>}
+              {errors.email && <p className='text-sm text-red-500'>{String(errors.email.message)}</p>}
+              <label className='block text-gray-700 mb-1 font-semibold'>Password</label>
 
-            <button type='submit' className='w-full text-md cursor-pointer bg-black text-white py-2 rounded-lg mt-4'>
-              SignUp
-            </button>
-            {serverError && <p className='text-sm text-red-500'>{serverError}</p>}
-          </form>
+              <div className='relative'>
+                <input
+                  type={passwordVisible ? 'text' : 'password'}
+                  placeholder='Min. 6 characters'
+                  className='w-full p-2 border border-gray-300 outline-0 rounded-md mb-1'
+                  {...register('password', {
+                    required: 'Password is Required',
+                    minLength: {
+                      value: 6,
+                      message: 'Password must be at least 6 characters.',
+                    },
+                  })}
+                />
+                <button
+                  type='button'
+                  onClick={() => setPasswordVisible(!passwordVisible)}
+                  className='absolute inset-y-0 right-3 flex items-center text-gray-400'
+                >
+                  {passwordVisible ? <Eye /> : <EyeOff />}
+                </button>
+              </div>
+              {errors.password && <p className='text-sm text-red-500'>{String(errors.password.message)}</p>}
+
+              <button type='submit' className='w-full text-md cursor-pointer bg-primary-main text-white py-2 rounded-md mt-4'>
+                SignUp
+              </button>
+              {serverError && <p className='text-sm text-red-500'>{serverError}</p>}
+            </form>
+          ) : (
+            <Otp
+              otp={otp}
+              setOtp={setOtp}
+              canResend={canResend}
+              setCanResend={setCanResend}
+              timer={timer}
+              setTimer={setTimer}
+              inputRefs={inputRefs}
+            />
+          )}
         </div>
       </div>
     </div>

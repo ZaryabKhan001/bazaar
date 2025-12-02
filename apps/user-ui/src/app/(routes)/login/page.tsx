@@ -100,7 +100,7 @@ const Login = () => {
                 Forgot Password?
               </Link>
             </div>
-            <button type='submit' className='w-full text-md cursor-pointer bg-black text-white py-2 rounded-lg'>
+            <button type='submit' className='w-full text-md cursor-pointer bg-primary-main text-white py-2 rounded-md'>
               Login
             </button>
             {

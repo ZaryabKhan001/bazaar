@@ -48,3 +48,7 @@ test-output
 error.log
 .env
 /generated/prisma
+
+# Next.js
+.next
+out

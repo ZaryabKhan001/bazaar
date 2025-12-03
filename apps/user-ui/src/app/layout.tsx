@@ -1,7 +1,7 @@
 import Header from '../shared/widgets/Header';
 import './global.css';
 import { Poppins, Roboto } from 'next/font/google';
-import Providers from './providers';
+import Providers from './Providers';
 
 const roboto = Roboto({
   subsets: ['latin'],

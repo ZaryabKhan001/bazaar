@@ -1,31 +1,30 @@
 'use client';
 import { useMutation } from '@tanstack/react-query';
-import GoogleButton from 'apps/user-ui/src/shared/components/GoogleButton';
 import Otp from 'apps/user-ui/src/shared/components/Otp';
-import { Eye, EyeOff } from 'lucide-react';
-import Link from 'next/link';
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { api } from 'apps/user-ui/src/lib/api';
 import { AxiosError } from 'axios';
 import { useRouter } from 'next/navigation';
+import { toast } from 'react-hot-toast';
+import { Eye, EyeOff } from 'lucide-react';
 
 type formData = {
-  name: string;
   email: string;
   password: string;
 };
 
-const Signup = () => {
-    const router = useRouter();
+const ForgotPassword = () => {
+  const router = useRouter();
+
   const [serverError, setServerError] = useState<string | null>(null);
-  const [passwordVisible, setPasswordVisible] = useState<boolean>(false);
   const [canResend, setCanResend] = useState<boolean>(true);
-  const [showOtp, setShowOtp] = useState<boolean>(false);
+  const [step, setStep] = useState<'email' | 'otp' | 'reset'>('email');
   const [userData, setUserData] = useState<formData | null>(null);
   const [timer, setTimer] = useState<number>(60);
   const [otp, setOtp] = useState(['', '', '', '']);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const [passwordVisible, setPasswordVisible] = useState<boolean>(false);
 
   const {
     register,
@@ -33,21 +32,45 @@ const Signup = () => {
     formState: { errors },
   } = useForm<formData>();
 
-  const signupMutation = useMutation({
+  const forgotPasswordMutation = useMutation({
     mutationFn: async (data: formData) => {
-      const response = await api.post('/auth/api/user-registration', data);
+      const response = await api.post('/auth/api/forgot-password-user', data);
       return response?.data;
     },
     onSuccess: (_, formData) => {
       setServerError(null);
       setUserData(formData);
-      setShowOtp(true);
       setCanResend(false);
       setTimer(60);
       startResendTimer();
+      setStep('otp');
     },
     onError: (error: AxiosError) => {
-      const errorMessage = (error.response?.data as { message?: string })?.message || 'SignUp Failed!';
+      const errorMessage = (error.response?.data as { message?: string })?.message || 'Failed to proceed!';
+      setServerError(errorMessage);
+    },
+  });
+
+  const resetPaswordMutation = useMutation({
+    mutationFn: async ({ password }: { password: string }) => {
+      console.log('password', password);
+      if (!password) {
+        throw new Error('Password is required');
+      };
+      const response = await api.post('/auth/api/reset-password-user', {
+        email: userData?.email,
+        newPassword: password,
+      });
+      return response.data;
+    },
+    onSuccess: () => {
+      setStep('email');
+      setServerError(null);
+      router.push('/login');
+      toast.success('Password reset Successfully! Please login with your new Password.');
+    },
+    onError: (error: AxiosError) => {
+      const errorMessage = (error.response?.data as { message?: string })?.message || 'Failed to proceed!';
       setServerError(errorMessage);
     },
   });
@@ -66,55 +89,43 @@ const Signup = () => {
   };
 
   const onSubmit = (data: formData) => {
-    signupMutation.mutate(data);
+    forgotPasswordMutation.mutate(data);
   };
 
-  const handleResendOtp = useCallback(() => {
-    if (!userData) return;
-    signupMutation.mutate(userData);
-  }, []);
+  const onSubmitPassword = async (data: formData) => {
+    resetPaswordMutation.mutate({ password: data.password as string });
+  };
 
-  const handleOnSuccess = useCallback(() => {
-      router.push('/login');
-  }, []);
+  const handleResendOtp = () => {
+    setServerError(null);
+    setOtp(['', '', '', '']);
+    if (userData) {
+      forgotPasswordMutation.mutate(userData);
+    }
+  };
 
-  const verifyOtpUrl = useMemo(() => '/auth/api/verify-user', []);
+  const handleOTPSuccess = () => {
+    setServerError(null);
+    setStep('reset');
+  };
+
+  const verifyOtpUrl = useMemo(() => '/auth/api/verify-forgot-password-user', []);
   const verifyOtpMutationOptions = useMemo(() => {
-    return { ...userData, otp: otp.join('') };
+    return { email: userData?.email, otp: otp.join('') };
   }, [userData, otp]);
-
   return (
     <div className='w-full py-10 min-h-[85vh] bg-primary-backgroundDull '>
-      <h1 className='text-3xl font-Poppins font-semibold text-black text-center'>Sign up</h1>
-      <p className='text-center text-lg font-medium py-3 text-[#00000099]'>Home . Sign up</p>
+      <h1 className='text-3xl font-Poppins font-semibold text-black text-center'>Forgot Password</h1>
+      <p className='text-center text-lg font-medium py-3 text-[#00000099]'>Home . Forgot Password</p>
       <div className='w-full flex justify-center'>
         <div className='md:w-[480px] p-8 bg-white shadow rounded-lg'>
-          <h3 className='text-2xl font-bold text-center mb-2 font-Poppins'>Sign up to Bazaar</h3>
-          <p className='text-center text-gray-500 mb-4'>
-            Already have an account?{' '}
-            <Link href='/login' className='text-primary-main font-semibold'>
-              Login
-            </Link>
-          </p>
-          <GoogleButton />
-          <div className='flex items-center my-5 text-gray-400 text-sm'>
-            <div className='flex-1 border-t border-gray-300'></div>
-            <span className='px-3'> or Sign In with Email</span>
-            <div className='flex-1 border-t border-gray-300'></div>
-          </div>
+          <h3 className='text-2xl font-bold text-center mb-12 font-Poppins'>
+            <p>No Worries</p>
+            <p>We're here for you!</p>
+          </h3>
           {/* form  */}
-          {!showOtp ? (
+          {step === 'email' && (
             <form onSubmit={handleSubmit(onSubmit)}>
-              <label className='block text-gray-700 mb-1 font-semibold'>Name</label>
-              <input
-                type='text'
-                placeholder='John Doe'
-                className='w-full p-2 border border-gray-300 outline-0 rounded-md mb-1'
-                {...register('name', {
-                  required: 'Name is Required',
-                })}
-              />
-              {errors.name && <p className='text-sm text-red-500'>{String(errors.name.message)}</p>}
               <label className='block text-gray-700 mb-1 font-semibold'>Email</label>
               <input
                 type='email'
@@ -129,7 +140,36 @@ const Signup = () => {
                 })}
               />
               {errors.email && <p className='text-sm text-red-500'>{String(errors.email.message)}</p>}
-              <label className='block text-gray-700 mb-1 font-semibold'>Password</label>
+
+              <button
+                type='submit'
+                className='w-full text-md cursor-pointer bg-primary-main text-white py-2 rounded-md mt-4'
+                disabled={forgotPasswordMutation.isPending}
+              >
+                {forgotPasswordMutation.isPending ? 'Sending OTP...' : 'Submit'}
+              </button>
+              {serverError && <p className='text-sm text-red-500'>{serverError}</p>}
+            </form>
+          )}
+          {step === 'otp' && (
+            <Otp
+              otp={otp}
+              setOtp={setOtp}
+              canResend={canResend}
+              setCanResend={setCanResend}
+              timer={timer}
+              setTimer={setTimer}
+              inputRefs={inputRefs}
+              userData={userData}
+              verifyOtpUrl={verifyOtpUrl}
+              verifyOtpMutationOptions={verifyOtpMutationOptions}
+              handleResendOtp={handleResendOtp}
+              handleOnSuccess={handleOTPSuccess}
+            />
+          )}
+          {step === 'reset' && (
+            <form onSubmit={handleSubmit(onSubmitPassword)}>
+              <label className='block text-gray-700 mb-1 font-semibold'>Enter new password</label>
 
               <div className='relative'>
                 <input
@@ -157,27 +197,12 @@ const Signup = () => {
               <button
                 type='submit'
                 className='w-full text-md cursor-pointer bg-primary-main text-white py-2 rounded-md mt-4'
-                disabled={signupMutation.isPending}
+                disabled={resetPaswordMutation.isPending}
               >
-                {signupMutation.isPending ? 'Singing up...' : 'SignUp'}
+                {resetPaswordMutation.isPending ? 'Submitting...' : 'Submit'}
               </button>
               {serverError && <p className='text-sm text-red-500'>{serverError}</p>}
             </form>
-          ) : (
-            <Otp
-              otp={otp}
-              setOtp={setOtp}
-              canResend={canResend}
-              setCanResend={setCanResend}
-              timer={timer}
-              setTimer={setTimer}
-              inputRefs={inputRefs}
-              userData={userData}
-              verifyOtpUrl={verifyOtpUrl}
-              verifyOtpMutationOptions={verifyOtpMutationOptions}
-              handleResendOtp={handleResendOtp}
-              handleOnSuccess={handleOnSuccess}
-            />
           )}
         </div>
       </div>
@@ -185,4 +210,4 @@ const Signup = () => {
   );
 };
 
-export default Signup;
+export default ForgotPassword;

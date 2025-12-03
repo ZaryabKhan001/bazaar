@@ -1,11 +1,13 @@
 'use client';
+import { useMutation } from '@tanstack/react-query';
 import GoogleButton from 'apps/user-ui/src/shared/components/GoogleButton';
 import Otp from 'apps/user-ui/src/shared/components/Otp';
 import { Eye, EyeOff } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import React, { useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
+import { api } from 'apps/user-ui/src/lib/api';
+import { AxiosError } from 'axios';
 
 type formData = {
   name: string;
@@ -16,14 +18,12 @@ type formData = {
 const Signup = () => {
   const [serverError, setServerError] = useState<string | null>(null);
   const [passwordVisible, setPasswordVisible] = useState<boolean>(false);
-  const [canResend, setCanResend] = useState<boolean>(false);
+  const [canResend, setCanResend] = useState<boolean>(true);
   const [showOtp, setShowOtp] = useState<boolean>(false);
   const [userData, setUserData] = useState<formData | null>(null);
   const [timer, setTimer] = useState<number>(60);
   const [otp, setOtp] = useState(['', '', '', '']);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
-
-  const router = useRouter();
 
   const {
     register,
@@ -31,7 +31,41 @@ const Signup = () => {
     formState: { errors },
   } = useForm<formData>();
 
-  const onSubmit = (data: formData) => {};
+  const signupMutation = useMutation({
+    mutationFn: async (data: formData) => {
+      const response = await api.post('/auth/api/user-registration', data);
+      return response?.data;
+    },
+    onSuccess: (_, formData) => {
+      setServerError(null);
+      setUserData(formData);
+      setShowOtp(true);
+      setCanResend(false);
+      setTimer(60);
+      startResendTimer();
+    },
+    onError: (error: AxiosError) => {
+      const errorMessage = (error.response?.data as {message?: string})?.message || "SignUp Failed!"
+      setServerError(errorMessage);
+    },
+  });
+
+  const startResendTimer = () => {
+    const interval = setInterval(() => {
+      setTimer((prev: number) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          setCanResend(true);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
+  const onSubmit = (data: formData) => {
+    signupMutation.mutate(data);
+  };
 
   return (
     <div className='w-full py-10 min-h-[85vh] bg-primary-backgroundDull '>
@@ -104,8 +138,12 @@ const Signup = () => {
               </div>
               {errors.password && <p className='text-sm text-red-500'>{String(errors.password.message)}</p>}
 
-              <button type='submit' className='w-full text-md cursor-pointer bg-primary-main text-white py-2 rounded-md mt-4'>
-                SignUp
+              <button
+                type='submit'
+                className='w-full text-md cursor-pointer bg-primary-main text-white py-2 rounded-md mt-4'
+                disabled={signupMutation.isPending}
+              >
+                {signupMutation.isPending ? 'Singing up...' : 'SignUp'}
               </button>
               {serverError && <p className='text-sm text-red-500'>{serverError}</p>}
             </form>
@@ -118,6 +156,7 @@ const Signup = () => {
               timer={timer}
               setTimer={setTimer}
               inputRefs={inputRefs}
+              userData={userData}
             />
           )}
         </div>

@@ -1,6 +1,14 @@
-/* eslint-disable @typescript-eslint/no-empty-function */
+import { useMutation } from '@tanstack/react-query';
 import { Dispatch, SetStateAction, RefObject } from 'react';
+import { api } from '../../lib/api';
+import { useRouter } from 'next/navigation';
+import { AxiosError } from 'axios';
 
+type formData = {
+  name: string;
+  email: string;
+  password: string;
+};
 export interface OtpProps {
   otp: string[];
   setOtp: Dispatch<SetStateAction<string[]>>;
@@ -9,9 +17,12 @@ export interface OtpProps {
   timer: number;
   setTimer: Dispatch<SetStateAction<number>>;
   inputRefs: RefObject<(HTMLInputElement | null)[]>;
+  userData: formData | null;
 }
 
-const Otp = ({ otp, inputRefs, setOtp, canResend, timer }: OtpProps) => {
+const Otp = ({ otp, inputRefs, setOtp, canResend, timer, userData }: OtpProps) => {
+  const router = useRouter();
+
   const handleOtpChange = (index: number, value: string) => {
     if (!/^[0-9]?$/.test(value)) return;
 
@@ -30,7 +41,24 @@ const Otp = ({ otp, inputRefs, setOtp, canResend, timer }: OtpProps) => {
     }
   };
 
-  const handleResendOtp = () => {};
+  const handleResendOtp = () => {
+    console.log('resend call');
+  };
+
+  const handleVerifyOTP = () => {
+    verifyOtpMutation.mutate();
+  };
+
+  const verifyOtpMutation = useMutation({
+    mutationFn: async () => {
+      if (!userData) return;
+      const response = await api.post('/auth/api/verify-user', { ...userData, otp: otp.join('') });
+      return response.data;
+    },
+    onSuccess: () => {
+      router.push('/login');
+    },
+  });
 
   return (
     <div>
@@ -51,12 +79,18 @@ const Otp = ({ otp, inputRefs, setOtp, canResend, timer }: OtpProps) => {
           />
         ))}
       </div>
-      <button type='button' className='w-full mt-4 text-lg cursor-pointer bg-primary-main text-white py-2 rounded-md'>
-        Verify OTP
+      <button
+        type='button'
+        className='w-full mt-4 text-lg cursor-pointer bg-primary-main text-white py-2 rounded-md'
+        onClick={handleVerifyOTP}
+        disabled={verifyOtpMutation.isPending}
+      >
+        {verifyOtpMutation.isPending ? 'Verifying...' : 'Verify OTP'}
       </button>
       <div className='text-center text-sm mt-4 '>
         {canResend ? (
           <button
+            type='button'
             className='text-primary-main cursor-pointer'
             onClick={handleResendOtp}
             disabled={!canResend || !!timer}
@@ -65,6 +99,13 @@ const Otp = ({ otp, inputRefs, setOtp, canResend, timer }: OtpProps) => {
           </button>
         ) : (
           <p>{`Resend OTP in ${timer} seconds.`}</p>
+        )}
+        {verifyOtpMutation.isError && verifyOtpMutation.error instanceof AxiosError && (
+          <p className='text-sm mt-2'>
+            {verifyOtpMutation.error.response?.data?.message ||
+              verifyOtpMutation.error.message ||
+              'OTP Verification Failed'}
+          </p>
         )}
       </div>
     </div>

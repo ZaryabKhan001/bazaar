@@ -2,6 +2,7 @@ import Header from '../shared/widgets/Header';
 import './global.css';
 import { Poppins, Roboto } from 'next/font/google';
 import Providers from './Providers';
+import { Toaster } from 'react-hot-toast';
 
 const roboto = Roboto({
   subsets: ['latin'],
@@ -26,6 +27,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Providers>
           <Header />
           {children}
+          <Toaster />
         </Providers>
       </body>
     </html>

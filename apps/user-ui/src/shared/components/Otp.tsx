@@ -1,13 +1,13 @@
 import { useMutation } from '@tanstack/react-query';
 import { Dispatch, SetStateAction, RefObject } from 'react';
 import { api } from '../../lib/api';
-import { useRouter } from 'next/navigation';
+
 import { AxiosError } from 'axios';
 
 type formData = {
-  name: string;
+  name?: string;
   email: string;
-  password: string;
+  password?: string;
 };
 export interface OtpProps {
   otp: string[];
@@ -18,11 +18,24 @@ export interface OtpProps {
   setTimer: Dispatch<SetStateAction<number>>;
   inputRefs: RefObject<(HTMLInputElement | null)[]>;
   userData: formData | null;
+  verifyOtpUrl: string;
+  verifyOtpMutationOptions: Record<string, any>;
+  handleResendOtp: () => void;
+  handleOnSuccess: () => void;
 }
 
-const Otp = ({ otp, inputRefs, setOtp, canResend, timer, userData }: OtpProps) => {
-  const router = useRouter();
-
+const Otp = ({
+  otp,
+  inputRefs,
+  setOtp,
+  canResend,
+  timer,
+  userData,
+  verifyOtpUrl,
+  verifyOtpMutationOptions,
+  handleResendOtp,
+  handleOnSuccess,
+}: OtpProps) => {
   const handleOtpChange = (index: number, value: string) => {
     if (!/^[0-9]?$/.test(value)) return;
 
@@ -41,10 +54,6 @@ const Otp = ({ otp, inputRefs, setOtp, canResend, timer, userData }: OtpProps) =
     }
   };
 
-  const handleResendOtp = () => {
-    console.log('resend call');
-  };
-
   const handleVerifyOTP = () => {
     verifyOtpMutation.mutate();
   };
@@ -52,12 +61,10 @@ const Otp = ({ otp, inputRefs, setOtp, canResend, timer, userData }: OtpProps) =
   const verifyOtpMutation = useMutation({
     mutationFn: async () => {
       if (!userData) return;
-      const response = await api.post('/auth/api/verify-user', { ...userData, otp: otp.join('') });
+      const response = await api.post(verifyOtpUrl, verifyOtpMutationOptions);
       return response.data;
     },
-    onSuccess: () => {
-      router.push('/login');
-    },
+    onSuccess: () => handleOnSuccess(),
   });
 
   return (
@@ -101,7 +108,7 @@ const Otp = ({ otp, inputRefs, setOtp, canResend, timer, userData }: OtpProps) =
           <p>{`Resend OTP in ${timer} seconds.`}</p>
         )}
         {verifyOtpMutation.isError && verifyOtpMutation.error instanceof AxiosError && (
-          <p className='text-sm mt-2'>
+          <p className='text-sm mt-2 text-red-500'>
             {verifyOtpMutation.error.response?.data?.message ||
               verifyOtpMutation.error.message ||
               'OTP Verification Failed'}

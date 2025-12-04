@@ -1,10 +1,14 @@
+'use client';
 import Link from 'next/link';
 import React from 'react';
 import { Heart, Search, Handbag } from 'lucide-react';
 import ProfileIcon from '../../assets/svgs/ProfileIcon';
 import HeaderBottom from './HeaderBottom';
+import { useUser } from '../../hooks/useUser';
 
 const Header = () => {
+  const { user, isLoading } = useUser();
+
   return (
     <div className='w-full bg-white'>
       {/* top header */}
@@ -39,16 +43,33 @@ const Header = () => {
             {/* login  */}
 
             <div className='flex items-center gap-2'>
-              <Link
-                href={'/login'}
-                className={`border-2 flex justify-center items-center w-[50px] h-[50px] rounded-full border-primary-border`}
-              >
-                <ProfileIcon />
-              </Link>
-              <Link href={'/login'}>
-                <span className='block font-medium'>Hello, </span>
-                <span className='font-semibold'>Sign in </span>
-              </Link>
+              {!isLoading && user ? (
+                <>
+                  <Link
+                    href={'/profile'}
+                    className={`border-2 flex justify-center items-center w-[50px] h-[50px] rounded-full border-primary-border`}
+                  >
+                    <ProfileIcon />
+                  </Link>
+                  <Link href={'/profile'}>
+                    <span className='block font-medium'>Hello,</span>
+                    <span className='font-semibold'> {user?.name?.split(' ')[0]}</span>
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <Link
+                    href={'/login'}
+                    className={`border-2 flex justify-center items-center w-[50px] h-[50px] rounded-full border-primary-border`}
+                  >
+                    <ProfileIcon />
+                  </Link>
+                  <Link href={'/login'}>
+                    <span className='block font-medium'>Hello, </span>
+                    <span className='font-semibold'>{isLoading ? '...' : 'Sign In'} </span>
+                  </Link>
+                </>
+              )}
             </div>
 
             {/* wish list and cart  */}
@@ -72,7 +93,7 @@ const Header = () => {
       </div>
       {/* header bottom  */}
       <div className='border-b border-b-slate-300' />
-        <HeaderBottom />
+      <HeaderBottom />
     </div>
   );
 };

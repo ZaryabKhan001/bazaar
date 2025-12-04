@@ -145,6 +145,19 @@ export const handleRefreshToken = async (req: Request, res: Response, next: Next
   }
 };
 
+export const handleGetUser = async (req: any, res: Response, next: NextFunction) => {
+try {
+  const user = req.user;
+
+  return res.status(200).json({
+    success: true,
+    user,
+  });
+} catch (error) {
+  return next(error);
+}
+};
+
 export const handleUserForgotPassword = async (req: Request, res: Response, next: NextFunction) => {
   try {
     await forgotPassword(req, res, next, 'user');

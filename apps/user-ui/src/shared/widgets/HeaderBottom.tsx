@@ -5,10 +5,12 @@ import { navItems } from '../../configs/constants';
 import Link from 'next/link';
 import ProfileIcon from '../../assets/svgs/ProfileIcon';
 import { Handbag, Heart } from 'lucide-react';
+import { useUser } from '../../hooks/useUser';
 
 const HeaderBottom = () => {
   const [show, setShow] = useState(false);
   const [isSticky, setIsSticky] = useState(false);
+  const { user, isLoading } = useUser();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -41,41 +43,58 @@ const HeaderBottom = () => {
               </Link>
             ))}
           </div>
-            {isSticky && (
-              <div className='flex items-center gap-8'>
-                {/* login  */}
+          {isSticky && (
+            <div className='flex items-center gap-8'>
+              {/* login  */}
 
-                <div className='flex items-center gap-2'>
-                  <Link
-                    href={'/login'}
-                    className={`border-2 flex justify-center items-center w-[50px] h-[50px] rounded-full border-primary-border`}
-                  >
-                    <ProfileIcon />
-                  </Link>
-                  <Link href={'/login'}>
-                    <span className='block font-medium'>Hello, </span>
-                    <span className='font-semibold'>Sign in </span>
-                  </Link>
-                </div>
-
-                {/* wish list and cart  */}
-
-                <div className='flex items-center gap-5'>
-                  <Link href={'/wishlist'} className='relative cursor-pointer'>
-                    <Heart />
-                    <div className='w-6 h-6 border-2 border-white bg-red-500 rounded-full flex items-center justify-center absolute top-[-10px] right-[-10px]'>
-                      <span className='text-white text-sm font-medium'>0</span>
-                    </div>
-                  </Link>
-                  <Link href={'/cart'} className='relative cursor-pointer'>
-                    <Handbag />
-                    <div className='w-6 h-6 border-2 border-white bg-red-500 rounded-full flex items-center justify-center absolute top-[-10px] right-[-10px]'>
-                      <span className='text-white text-sm font-medium'>0</span>
-                    </div>
-                  </Link>
-                </div>
+              <div className='flex items-center gap-2'>
+                {!isLoading && user ? (
+                  <>
+                    <Link
+                      href={'/login'}
+                      className={`border-2 flex justify-center items-center w-[50px] h-[50px] rounded-full border-primary-border`}
+                    >
+                      <ProfileIcon />
+                    </Link>
+                    <Link href={'/login'}>
+                      <span className='block font-medium'>Hello, </span>
+                      <span className='font-semibold'>{user?.name.split(' ')[0]}</span>
+                    </Link>
+                  </>
+                ) : (
+                  <>
+                    <Link
+                      href={'/profile'}
+                      className={`border-2 flex justify-center items-center w-[50px] h-[50px] rounded-full border-primary-border`}
+                    >
+                      <ProfileIcon />
+                    </Link>
+                    <Link href={'/login'}>
+                      <span className='block font-medium'>Hello, </span>
+                      <span className='font-semibold'>{isLoading ? '...' : 'Sign In'} </span>
+                    </Link>
+                  </>
+                )}
               </div>
-            )}
+
+              {/* wish list and cart  */}
+
+              <div className='flex items-center gap-5'>
+                <Link href={'/wishlist'} className='relative cursor-pointer'>
+                  <Heart />
+                  <div className='w-6 h-6 border-2 border-white bg-red-500 rounded-full flex items-center justify-center absolute top-[-10px] right-[-10px]'>
+                    <span className='text-white text-sm font-medium'>0</span>
+                  </div>
+                </Link>
+                <Link href={'/cart'} className='relative cursor-pointer'>
+                  <Handbag />
+                  <div className='w-6 h-6 border-2 border-white bg-red-500 rounded-full flex items-center justify-center absolute top-[-10px] right-[-10px]'>
+                    <span className='text-white text-sm font-medium'>0</span>
+                  </div>
+                </Link>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

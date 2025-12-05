@@ -1,0 +1,124 @@
+'use client';
+import { useMutation } from '@tanstack/react-query';
+import { axiosInstance } from '../../../utils/axiosInstance';
+import { AxiosError } from 'axios';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import React, { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import FormInput from "../../../shared/components/form/FormInput";
+
+type formData = {
+  email: string;
+  password: string;
+};
+
+const Login = () => {
+  const [rememberMe, setRememberMe] = useState<boolean>(false);
+  const [serverError, setServerError] = useState<string | null>(null);
+
+  const router = useRouter();
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<formData>();
+
+  const loginMutation = useMutation({
+    mutationFn: async (data: formData) => {
+      const response = await axiosInstance.post('/auth/api/login-user', data, { withCredentials: true });
+      return response.data;
+    },
+    onSuccess: () => {
+      setServerError(null);
+      router.push('/');
+    },
+    onError: (error: AxiosError) => {
+      const errorMessage = (error.response?.data as {message?: string})?.message || "Login Failed!"
+      setServerError(errorMessage);
+    },
+  });
+
+  const onSubmit = (data: formData) => {
+    loginMutation.mutate(data);
+  };
+
+  return (
+    <div className='w-full py-10 min-h-[100vh] bg-primary-backgroundDull'>
+      <h1 className='text-3xl font-Poppins font-semibold text-black text-center'>Login</h1>
+      <p className='text-center text-lg font-medium py-3 text-[#00000099]'>Home . Login</p>
+      <div className='w-full flex justify-center'>
+        <div className='md:w-[480px] p-8 bg-white shadow rounded-lg'>
+          <h3 className='text-2xl font-bold text-center mb-2 font-Poppins'>Login to Bazaar</h3>
+          <p className='text-center text-gray-500 mb-4'>
+            Don't have an account?{' '}
+            <Link href='/signup' className='text-primary-main font-semibold'>
+              Sign up
+            </Link>
+          </p>
+          <div className='flex items-center my-5 text-gray-400 text-sm'>
+            <div className='flex-1 border-t border-gray-300'></div>
+            <span className='px-3'> or Sign In with Email</span>
+            <div className='flex-1 border-t border-gray-300'></div>
+          </div>
+          {/* form  */}
+          <form onSubmit={handleSubmit(onSubmit)}>
+            <FormInput 
+            label='Email'
+            name='email'
+            type='email'
+            placeholder='example@gmail.com'
+            register={register}
+            rules={{
+              required: 'Email is Required',
+              pattern: {
+                value: /^[a-zA-Z0-9._%+-]+@[a-zA-z0-9.-]+\.[a-zA-Z]{2,4}$/,
+                message: 'Invalid email address',
+              },
+            }}
+            error={errors.email}
+            />
+            <FormInput 
+            label='Password'
+            name='password'
+            type={'password'}
+            placeholder='Min. 6 characters'
+            register={register}
+            rules={{
+                  required: 'Password is Required',
+                  minLength: {
+                    value: 6,
+                    message: 'Password must be at least 6 characters.',
+                  },
+                }}
+            error={errors.password}
+            />
+
+            <div className='flex justify-between items-center my-4'>
+              <label className='flex items-center text-gray-600'>
+                <input
+                  type='checkbox'
+                  className='mr-2'
+                  checked={rememberMe}
+                  onChange={() => setRememberMe(!rememberMe)}
+                />
+                Remember me
+              </label>
+              <Link href={'/forgot-password'} className='text-primary-main text-sm font-semibold'>
+                Forgot Password?
+              </Link>
+            </div>
+            <button type='submit' className='w-full text-md cursor-pointer bg-primary-main text-white py-2 rounded-md'
+            disabled={loginMutation?.isPending}>
+              {loginMutation?.isPending ? 'Logging In...' : 'Login'}
+            </button>
+            {serverError && <p className='text-sm text-red-500'>{serverError}</p>}
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default Login;

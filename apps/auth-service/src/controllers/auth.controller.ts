@@ -151,7 +151,10 @@ try {
 
   return res.status(200).json({
     success: true,
-    user,
+    user: {
+      name: user.name,
+      email: user?.email,
+    },
   });
 } catch (error) {
   return next(error);
